@@ -1,0 +1,73 @@
+body{
+    
+    margin: 0;
+}
+
+.row{
+    width: 80%;
+    margin: auto;
+    background: linear-gradient(to bottom, #269900, #1a6600);
+}
+.col-sm-2{
+    width: 13%;
+    text-align: center;
+    background: linear-gradient(to bottom, #269900, #1a6600);
+        border: 0.5px solid #134d00;
+    border-radius: 5px;
+    padding: 0px;
+    margin-left: 0.0px;
+
+}
+.dropicon{
+    display: none;
+}
+button{
+    width: 50px;
+}
+/*
+.rw80{
+    width: 80%;
+    margin: auto;
+}
+*/
+
+
+
+@media screen and (max-width:680px){
+    .row{
+        display: none;
+        background: white;
+    }
+    .col-sm-2{
+        background: linear-gradient(to bottom, #269900, #1a6600);
+        border: 0.5px solid #134d00;
+    }
+    
+    .show{
+        display: table-column; 
+        float: right;
+    }
+    
+    
+    .dropicon{
+        display: block;
+        float: left;
+    }
+    .row{
+        width: 100%; 
+    }
+    .nav{   
+        height: 30px;
+        width: 100%;
+    background-color: #33cc00;
+    }
+    .row.show{
+        display: list-item;
+    }
+    .col-sm-2{
+        width: 30%;
+    text-align: left;
+    margin: #2db300;
+}
+    
+}
