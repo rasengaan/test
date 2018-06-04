@@ -1,5 +1,6 @@
 .loginbody{
     padding-top: 10%;
+    background-color: aliceblue;
 }
 
 
@@ -7,10 +8,12 @@
    padding-left: 10px;
     padding: 5px 10px 5px 10px;
     margin: auto;
+    margin-top: 10px;
     border: 2px;
 /*    padding: 5px;*/
     box-shadow: 2px 2px 3px;
     border-radius: 5px;
+    background-color: whitesmoke;
     
 }
 
@@ -43,7 +46,6 @@
 }
 .inputbox{
     border-radius: 7px;
-         
 }
 .centeralign{
     margin-left: 25%;
