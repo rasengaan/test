@@ -1,0 +1,57 @@
+.loginbody{
+    padding-top: 10%;
+}
+
+
+.container.login{
+   padding-left: 10px;
+    padding: 5px 10px 5px 10px;
+    margin: auto;
+    border: 2px;
+/*    padding: 5px;*/
+    box-shadow: 2px 2px 3px;
+    border-radius: 5px;
+    
+}
+
+.row div{
+     background: radial-gradient(#00ff00,#00aa00);
+    border-radius: 9px;
+    
+}
+.right-float{
+    float: right;
+    margin-right: 2px;
+}
+
+/*login page*/
+.login .row{
+    margin: 2px;
+    border: 2px;
+    padding: 5px;
+    box-shadow: 2px 2px 3px ;
+    border-radius: 5px;
+}
+.login .row{
+    text-align: center;
+}
+.centeralign{
+    margin: auto;
+}
+.btn{
+    margin: auto;
+}
+.inputbox{
+    border-radius: 7px;
+         
+}
+.centeralign{
+    margin-left: 25%;
+    
+}
+
+.centeralign.align50{
+    margin: 5px 100% 5px 100%;
+}
+
+
