@@ -56,6 +56,7 @@ need {
 exports.uploadsms =functions.https.onCall((req,response)=>{
   var i=0;
   var uid = req.uid;
+  var len = req.length;
  
   var medical = req.medicals;
   var bills = req.bills;
@@ -76,10 +77,23 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
   var atm = req.atm;
   var netBank = req.netBanking;
   var merchant = req.merchant;
+ console.log(req);
+ console.log(len);
 
-  var len =medical.length;
+ 
   while(i<len){
     let categ="";
+    let dat=date[i];
+    var tim=time[i];
+    var day= parseInt((dat[0]+dat[1]),10);
+    var month= parseInt((dat[3]+dat[4]),10)-1;
+    var year= parseInt((dat[6]+dat[7]+dat[8]+dat[9]),10);
+    var hour= parseInt((tim[0]+tim[1]),10);
+    var min= parseInt((tim[3]+tim[4]),10);
+    var sec= parseInt((tim[6]+tim[7]),10);
+   
+  var tstamp = new Date(Date.UTC(year,month,day,hour,min,sec));
+
     if(bills[i]){
       categ="BILLs"
     }else{
@@ -112,7 +126,7 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
     let doc={
       "uid":  uid,
       "amt": transacAmt[i],
-      "date":  req.date,
+      "date":  tstamp,
       "merchant":  merchant[i],
       "category":  categ,
       "type":  credit[i]===1?"credit":"debit",
@@ -121,18 +135,23 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
       "netBank":  netBank[i],
       "availableBal":availBal[i]
     }
+    console.log((doc.date));
     db.collection('users').doc(doc.uid)
-        .collection('transactions').doc()
-        .set(doc); 
-        console.log("hello");
+      .collection('transactions').add(doc)
+      .then((res)=>{
+        db.collection('users').doc(doc.uid)
+          .collection('transactions').doc(res.id).update({
+           'tid':res.id
+          });
+        return ("dataSaved");
+      })
+      .catch(err=>{
+        throw err;
+      });
+      console.log(i);
     i++;
-    if(i===len){
-      return ("sms saved");
-    }
   }
-  if(i===len){
-    return("sms saved");
-  }
+  return("dataSaved");
 });
 
 /*
@@ -193,7 +212,11 @@ returns array of 8 each index represents amount spend on bills,food,grocery,heal
     "uid":  req.uid
     };
     var month = req.month;
-
+    var pMonth=0;
+    if(month!==0)
+       pMonth = month-1;
+    else
+       pMonth = 11;
     var user={
       accType:"",
       docId:""
@@ -202,6 +225,7 @@ returns array of 8 each index represents amount spend on bills,food,grocery,heal
       .collection('transactions').where('mode','==','online').get()
         .then((snapshot)=>{
           var multi=[0,0,0,0,0,0,0,0];
+          var pMulti=[0,0,0,0,0,0,0,0];
           snapshot.forEach((docs)=>{
             var d = new Date(0);
             d.setUTCSeconds(docs.data().date.seconds)
@@ -244,8 +268,49 @@ returns array of 8 each index represents amount spend on bills,food,grocery,heal
                 } 
                   
               }
+              if(d.getMonth()===pMonth){
+                switch(docs.data().category) { 
+                    case ("BILLS"): { 
+                      pMulti[0] += docs.data().amt;
+                      break; 
+                    } 
+                    case ("FOOD"): { 
+                      pMulti[1] += docs.data().amt; 
+                      break; 
+                    } 
+                    case ("GROCERY"): { 
+                      pMulti[2] += docs.data().amt; 
+                      break; 
+                    } 
+                    case ("HEALTH"): { 
+                      pMulti[3] += docs.data().amt; 
+                      break; 
+                    } 
+                    case ("LOAN"): { 
+                      pMulti[4] += docs.data().amt;
+                      break; 
+                    } 
+                    case ("SHOPPING"): { 
+                      pMulti[5] += docs.data().amt; 
+                      break; 
+                    } 
+                    case ("SUBSCRIPTION"): { 
+                        multi[6] += docs.data().amt; 
+                      break; 
+                    } 
+                    case ("TRAVEL"): { 
+                      pMulti[7] += docs.data().amt; 
+                      break; 
+                    } 
+                    
+                } 
+                  
+              }
           });
-          return ({'categoryData':multi});
+          return ({
+            'categoryData':multi,
+            'categoryDataP':pMulti,
+          });
         })
         .catch((err)=>{
              throw err;
@@ -267,7 +332,7 @@ exports.getTransactionMode = functions.https.onCall((req,res)=>{
       accType:"",
       docId:""
     } 
-  return db.collection('users').doc(user.docId)
+  return db.collection('users').doc(doc.uid)
       .collection('transactions').get()
         .then((res)=>{
            var arr=[[0,0],[0,0],[0,0]];
@@ -303,7 +368,60 @@ exports.getTransactionMode = functions.https.onCall((req,res)=>{
  });
 
 
+
+/*------------------------Recurring Essen-----------------------*/ 
+
+
+exports.reccurMerch = functions.https.onCall((data,context)=>{
+  var doc={
+    'uid':data.uid,
+  };
+  console.log(doc);
+  var merchants={
+    
+  };
+  console.log("1");
+  
+  //var date= new Date().valueOf();
+  var date =1588909215622-2678400;
+  console.log(date);
+  return db.collection('users').doc(doc.uid)
+  .collection('transaction').where('date','>=',date)
+  .orderBy('date','desc').get()
+  .then((doc)=>{
+    console.log("2");
+    doc.forEach(val=>{
+      console.log("3");
+      merchants[val.data().merchant][val.data().date]+=1;
+      console.log(merchants);
+      console.log("3");
+    });
+    console.log("4");
+    return 'merchants';
+  })
+  .then(dat=>{
+    console.log("merch");
+    return merchants;
+  })
+  .catch(err=>{
+    console.log("err");
+    throw err;
+  });
+  //console.log("last");
+  
+});
+
+
+
+
+
+
+
+
+
+
 /*-----------------------cashTransactions-------------------------*/
+
 
 
 
@@ -335,9 +453,12 @@ exports.uploadCashData =functions.https.onCall((req,response)=>{
       docId:""
     } 
     return db.collection('users').doc(doc.uid)
-      .collection('transactions').doc().set(doc)
+      .collection('transactions').add(doc)
       .then((res)=>{
-        return("transaction saved")
+        return db.collection('users').doc(doc.uid)
+        .collection('transactions').doc(res.id).update({
+          'tid':res.id
+        });
       })
       .catch((err)=>{
         throw err;
@@ -351,7 +472,51 @@ exports.uploadCashData =functions.https.onCall((req,response)=>{
 
 
 /*
-get number of cash Transaction by categories
+updates cash Transaction
+need {
+        "tid":  req.tid,
+        "uid":  req.uid,
+        "amt": req.amt,
+        "date":  req.date,
+        "category":  req.category,
+        "mode":  req.mode,
+        "description":  req.description,
+        "remark":  req.remark,
+    }
+ */
+exports.updateCashData =functions.https.onCall((req,response)=>{ 
+    var doc = {
+      'tid':req.tid,
+      "uid":  req.uid,
+      "amt": req.amt,
+      "date":  req.date,
+      "category":  req.category,
+      "merchant":  req.merchant,
+      "mode":  req.mode,
+      "description":  req.description,
+      "remark":  req.remark,
+    };
+    var user={
+      accType:"",
+      docId:""
+    } 
+    return db.collection('users').doc(doc.uid)
+      .collection('transactions').doc(doc.tid).update(doc)
+      .then((res)=>{
+        return("transaction saved")
+      })
+      .catch((err)=>{
+        throw err;
+      });
+    
+//    category: grocery, food,shoppimg, travel,bills,loan,health, subaciption;     
+    
+ });
+
+
+
+/*
+get details of cash Transaction by categories
 need {
         "uid":  req.uid,
         "month":  req.month, (0 - 11)
@@ -396,35 +561,35 @@ exports.getCashDataByCateg =functions.https.onCall((req,response)=>{
             if(d.getMonth()===month){
               switch(docs.data().category) { 
                   case ("BILLS"): { 
-                      bills.push( docs.data().amt);
+                      bills.push( docs.data());
                     break; 
                   } 
                   case ("FOOD"): { 
-                    food.push( docs.data().amt); 
+                    food.push( docs.data()); 
                     break; 
                   } 
                   case ("GROCERY"): {
-                    grocery.push( docs.data().amt); 
+                    grocery.push( docs.data()); 
                     break; 
                   } 
                   case ("HEALTH"): { 
-                    health.push(docs.data().amt); 
+                    health.push(docs.data()); 
                     break; 
                   } 
                   case ("LOAN"): { 
-                    loan.push( docs.data().amt);
+                    loan.push( docs.data());
                     break; 
                   } 
                   case ("SHOPPING"): { 
-                    shopping.push( docs.data().amt); 
+                    shopping.push( docs.data()); 
                     break; 
                   } 
                   case ("SUBSCRIPTION"): { 
-                     subscription.push( docs.data().amt); 
+                     subscription.push( docs.data()); 
                     break; 
                   } 
                   case ("TRAVEL"): { 
-                    travel.push( docs.data().amt); 
+                    travel.push( docs.data()); 
                     break; 
                   } 
                   
@@ -457,7 +622,11 @@ exports.getCashDataByCateg =functions.https.onCall((req,response)=>{
 
 
  /*
-
+online Transaction Details of specific month
+need {
+        "uid":  req.uid,
+        "month":  req.month, (0 - 11)
+    }
  */
 
 
@@ -490,35 +659,35 @@ exports.getCashDataByCateg =functions.https.onCall((req,response)=>{
             if(d.getMonth()===month){
               switch(docs.data().category) { 
                   case ("BILLS"): { 
-                      bills.push( docs.data().amt);
+                      bills.push( docs.data());
                     break; 
                   } 
                   case ("FOOD"): { 
-                    food.push( docs.data().amt); 
+                    food.push( docs.data()); 
                     break; 
                   } 
                   case ("GROCERY"): {
-                    grocery.push( docs.data().amt); 
+                    grocery.push( docs.data()); 
                     break; 
                   } 
                   case ("HEALTH"): { 
-                    health.push(docs.data().amt); 
+                    health.push(docs.data()); 
                     break; 
                   } 
                   case ("LOAN"): { 
-                    loan.push( docs.data().amt);
+                    loan.push( docs.data());
                     break; 
                   } 
                   case ("SHOPPING"): { 
-                    shopping.push( docs.data().amt); 
+                    shopping.push( docs.data()); 
                     break; 
                   } 
                   case ("SUBSCRIPTION"): { 
-                     subscription.push( docs.data().amt); 
+                     subscription.push( docs.data()); 
                     break; 
                   } 
                   case ("TRAVEL"): { 
-                    travel.push( docs.data().amt); 
+                    travel.push( docs.data()); 
                     break; 
                   } 
                   
@@ -545,7 +714,7 @@ exports.getCashDataByCateg =functions.https.onCall((req,response)=>{
 
 
 /*
- cash Transaction Details of specific month
+ All Transaction Details of specific month
 need {
         "uid":  req.uid,
         "month":  req.month, (0 - 11)
@@ -611,6 +780,7 @@ string on success
 exports.newChallenge = functions.https.onCall((data,context)=>{
   var user =data.uid;
   var doc = {
+    'cid':data.cid,
     'challengeName':data.challengeName,
     'challengeCategory':data.challengeCategory,
     'challengeDescription':data.challengeDescription,
@@ -618,17 +788,45 @@ exports.newChallenge = functions.https.onCall((data,context)=>{
     'challengeCreator':data.challengeCreator,
     'challengeDuration':data.challengeDuration,    
     'challengeBegin':data.challengeBegin    
-  };
+  }; 
+  var d = new Date();
+  if(d>doc.challengeBegin){
+    return({"error":"can't Create chalenge of Past Date"})
+  }
+  if(doc.challengeDuration<259200000){
+    return ({
+      "error":"challenge duration less than 3 days"
+    })
+  }
+  // console.log(d.getMonth());///gives array index of month
 console.log(data);
-  return db.collection('challenges').doc().set(doc)
+  return db.collection('challenges').add(doc)
     .then((snap)=>{
-      console.log("snapped");
       //retuen a function to store challenge in the creatorrs acc
-      return db.collection('users').where('uid','==',user).get()
-      .then((snap)=>{
-         userId=snap.docs[0].id;
-         return userId;
-      });    
+      return db.collection('challenges').doc(snap.id).update({"cid":snap.id})
+      .then((res)=>{
+        return db.collection('challenges').doc(snap.id)
+          .collection('participants').doc(user).set({'amountSaved':0})
+        .then((resp)=>{
+          if(res.data().challengebegin>date){
+            type="upcomingChallenge"
+          }else
+            type="activeChallenges";
+    
+          return db.collection('users').doc(doc.uid)
+          .collection('challenges').doc(doc.cid).set({
+            'cid':doc.cid,
+            'amountSaved':0,
+            'status':type
+          });
+        })
+        .catch(er=>{
+          throw err;
+        });
+      })
+      .catch(err=>{
+        throw err;
+      });
     })
     .catch(err=>{
       throw err;  
@@ -638,18 +836,18 @@ console.log(data);
 
 /*
 Only to be called by upcoming or active challenges
+sets uid to list of participants 
+anf cid to user challenge list
 
 */
-exports.acceptchallenge= functions.https.onCall((data,context)=>{
+exports.acceptChallenge= functions.https.onCall((data,context)=>{
   var doc={
     'uid':data.uid,
-    'userName':data.userName,
-    'challengeId':data.challengeId,
+    'cid':data.cid,
   };
-  return db.collection('challenges').doc(doc.challengeId).
+  return db.collection('challenges').doc(doc.cid).
     collection('participants').doc(doc.uid).set({
       'amountSaved':0,
-      'name':doc.userName
     })  
     .then((res)=>{
       console.log(res);
@@ -665,8 +863,8 @@ exports.acceptchallenge= functions.https.onCall((data,context)=>{
         }
 
       return db.collection('users').doc(doc.uid)
-        .collection('challenges').doc(doc.challengeId).set({
-            'challengeId':doc.challengeId,
+        .collection('challenges').doc(doc.cid).set({
+            'cid':doc.cid,
             'amountSaved':0,
             'status':type
           })
@@ -683,18 +881,27 @@ exports.acceptchallenge= functions.https.onCall((data,context)=>{
 });
 
 exports.getUpcomingChallenges=functions.https.onCall((data,context)=>{
+  var upcomingChallenges=[];
   return db.collection('challenges').orderBy('challengeBegin','desc').get()
     .then(res=>{
-      return res
+      res.forEach((doc)=>{
+        var d=new Date();
+        upcomingChallenges.push(doc.data());
+
+      });
+      return({"upcomingChallenges":upcomingChallenges}) 
     })
     .catch(err=>{throw err;})
 });
 exports.getActiveChallenges=functions.https.onCall((data,context)=>{
 
 });
-exports.getEcpiredChallenges=functions.https.onCall((data,context)=>{
+exports.getExpiredChallenges=functions.https.onCall((data,context)=>{
 
 });
+
+
+
 //begin chatBox;;
 
 
