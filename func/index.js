@@ -79,7 +79,10 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
   var merchant = req.merchant;
  console.log(req);
  console.log(len);
-
+  
+ if(req.length===0){
+  return ({'err':"error occured"});
+}
  
   while(i<len){
     let categ="";
@@ -115,7 +118,11 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
                 if(travel[i]){
                   categ="TRAVEL"
                 }else{
-                  categ="LOAN"
+                  if(emi[i]){
+                    categ="LOAN"
+                  }else{
+                    categ="NAN"
+                  }
                 }
               }
             }
@@ -135,20 +142,22 @@ exports.uploadsms =functions.https.onCall((req,response)=>{
       "netBank":  netBank[i],
       "availableBal":availBal[i]
     }
-    console.log((doc.date));
+  //  console.log((doc.date));
     db.collection('users').doc(doc.uid)
       .collection('transactions').add(doc)
       .then((res)=>{
+        console.log("saved")
         db.collection('users').doc(doc.uid)
           .collection('transactions').doc(res.id).update({
            'tid':res.id
           });
+          console.log("updated")
         return ("dataSaved");
       })
       .catch(err=>{
         throw err;
       });
-      console.log(i);
+ //     console.log(i);
     i++;
   }
   return("dataSaved");
@@ -371,7 +380,10 @@ exports.getTransactionMode = functions.https.onCall((req,res)=>{
 
 /*------------------------Recurring Essen-----------------------*/ 
 
-
+/*
+need uid;
+gives reccuring merchant's count in last month 
+*/
 exports.reccurMerch = functions.https.onCall((data,context)=>{
   var doc={
     'uid':data.uid,
@@ -382,32 +394,28 @@ exports.reccurMerch = functions.https.onCall((data,context)=>{
   };
   console.log("1");
   
-  //var date= new Date().valueOf();
-  var date =1588909215622-2678400;
-  console.log(date);
+  var date = new Date().getTime();
+var d=new Date(date -2658600000)
+  console.log(d);
   return db.collection('users').doc(doc.uid)
   .collection('transaction').where('date','>=',date)
   .orderBy('date','desc').get()
   .then((doc)=>{
-    console.log("2");
     doc.forEach(val=>{
-      console.log("3");
-      merchants[val.data().merchant][val.data().date]+=1;
-      console.log(merchants);
-      console.log("3");
+      if(merchants[val.data().merchant.toString()]){
+        var va=merchants[val.data().merchant.toString()]+1;
+       merchants[val.data().merchant.toString()]=va;
+      }else{
+        merchants[val.data().merchant.toString()]=1;
+     }
     });
-    console.log("4");
-    return 'merchants';
-  })
-  .then(dat=>{
-    console.log("merch");
     return merchants;
   })
   .catch(err=>{
-    console.log("err");
     throw err;
   });
-  //console.log("last");
+
+  
   
 });
 
@@ -789,7 +797,7 @@ exports.newChallenge = functions.https.onCall((data,context)=>{
     'challengeDuration':data.challengeDuration,    
     'challengeBegin':data.challengeBegin    
   }; 
-  var d = new Date();
+  var d = new Date().getTime();
   if(d>doc.challengeBegin){
     return({"error":"can't Create chalenge of Past Date"})
   }
@@ -891,7 +899,9 @@ exports.getUpcomingChallenges=functions.https.onCall((data,context)=>{
       });
       return({"upcomingChallenges":upcomingChallenges}) 
     })
-    .catch(err=>{throw err;})
+    .catch(err=>{
+      throw err;
+    });
 });
 exports.getActiveChallenges=functions.https.onCall((data,context)=>{
 
@@ -899,8 +909,35 @@ exports.getActiveChallenges=functions.https.onCall((data,context)=>{
 exports.getExpiredChallenges=functions.https.onCall((data,context)=>{
 
 });
+/*
+exports.myChallenges=functions.https.onCall((data,context)=>{
+  var upcomingChallenges=[];
+  var ongoingChallenges=[];
+  var expiredChallenges=[];
+  var d= new Date().getTime();
+  return db.collection('users').doc(doc.uid)
+  .collection('challenges').orderBy('cid','asc').get()
+  .then(data=>{
+    data.forEach(doc=>{
+      db.collection('challenges').doc(doc.data().cid).get()
+      .then(res=>{
+        if(res.data().challengebegin._seconds*1000>d){
+          upcomingChallenges.push(res.data());
+        }else{
+          if((res.data().challengebegin._seconds+res.data().challengeDuration._seconds)*1000>d){
+            upcomingChallenges.push(res.data());
+          }else{
 
-
+          }
+        }
+      })
+      doc.data().cid;
+    });
+  })
+  .catch(err=>{
+    throw err;
+  });
+});*/
 
 //begin chatBox;;
 
